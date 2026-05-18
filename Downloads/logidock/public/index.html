@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0d1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>LogiDock</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo">🏭 LOGI<span>DOCK</span></div>
+  <div class="topbar-r">
+    <div class="live-dot"></div>
+    <div class="clock-box"><span id="clock">--:--:--</span><small id="turno-lbl">Turno —</small></div>
+    <button class="btg btn btn-sm" onclick="goPage('config',null)">⚙️</button>
+  </div>
+</header>
+
+<div class="shell">
+
+<!-- DASHBOARD -->
+<div class="page active" id="pg-dashboard">
+  <div class="pg-title">VISÃO <span>GERAL</span></div>
+  <div class="pg-sub" id="today-lbl">—</div>
+  <div class="sg">
+    <div class="sc g"><div class="slbl">Docas Livres</div><div class="sval" style="color:var(--green)" id="s-livre">—</div><div class="ssub">disponíveis</div></div>
+    <div class="sc b"><div class="slbl">Em Operação</div><div class="sval" style="color:var(--blue)" id="s-ocup">—</div><div class="ssub">ativas agora</div></div>
+    <div class="sc a"><div class="slbl">Aguardando</div><div class="sval" style="color:var(--amber)" id="s-agrd">—</div><div class="ssub">na doca</div></div>
+    <div class="sc r"><div class="slbl">Fila Externa</div><div class="sval" style="color:var(--red)" id="s-fila">—</div><div class="ssub">veículos</div></div>
+  </div>
+  <div class="card">
+    <div class="card-h"><span class="card-t">Ocupação</span><span id="occ-pct" style="font-family:monospace;font-size:14px;font-weight:900;color:var(--amber)">—%</span></div>
+    <div style="padding:12px 14px">
+      <div class="pb" style="height:8px;margin-bottom:7px"><div class="pf" id="occ-bar" style="background:var(--amber);width:0%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)">
+        <span id="occ-detail">—</span><span id="occ-maint" style="color:var(--red)"></span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-h"><span class="card-t">Fila de Espera</span><button class="btn btp btn-sm" onclick="openModal('modal-fila')">+ Registrar</button></div>
+    <div id="dash-queue"></div>
+  </div>
+  <div class="card">
+    <div class="card-h"><span class="card-t">Agendamentos de Hoje</span><button class="btn btp btn-sm" onclick="openModal('modal-agendar')">+ Novo</button></div>
+    <div style="overflow-x:auto">
+      <table class="tbl"><thead><tr><th>Hora</th><th>Placa</th><th>Tipo</th><th>Doca</th><th>Status</th></tr></thead>
+      <tbody id="dash-sched"></tbody></table>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:0">
+    <div class="card-h"><span class="card-t">Turno Atual</span><span id="turno-info" style="font-size:10px;color:var(--muted)">—</span></div>
+    <div class="sg" style="padding:12px;margin-bottom:0;gap:8px">
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center"><div class="slbl">Concluídos</div><div id="s-done" style="font-family:monospace;font-size:26px;font-weight:900;color:var(--green);line-height:1">0</div></div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center"><div class="slbl">Tempo Médio</div><div id="s-avg" style="font-family:monospace;font-size:26px;font-weight:900;color:var(--blue);line-height:1">—<span style="font-size:11px;color:var(--muted)">min</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DOCAS -->
+<div class="page" id="pg-docas">
+  <div class="pg-title">GRADE DE <span>DOCAS</span></div>
+  <div class="pg-sub">Toque em uma doca para operar</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;font-size:10px;font-weight:700">
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block"></span>Livre</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:var(--blue);display:inline-block"></span>Ocupado</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:var(--amber);display:inline-block"></span>Aguardando</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block"></span>Manutenção</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:var(--purple);display:inline-block"></span>Agendado</span>
+  </div>
+  <div class="chips" id="dock-chips">
+    <button class="chip on" onclick="filterDocks('all',this)">Todas</button>
+    <button class="chip" onclick="filterDocks('livre',this)">Livres</button>
+    <button class="chip" onclick="filterDocks('ocupado',this)">Ocupadas</button>
+    <button class="chip" onclick="filterDocks('aguardando',this)">Aguardando</button>
+    <button class="chip" onclick="filterDocks('agendado',this)">Agendadas</button>
+    <button class="chip" onclick="filterDocks('manutencao',this)">Manutenção</button>
+  </div>
+  <div class="card" style="margin-bottom:10px"><div class="dgrid" id="dock-grid"></div></div>
+  <button class="btn btp btn-bl" onclick="openModal('modal-agendar')">+ Agendar Doca</button>
+</div>
+
+<!-- AGENDA -->
+<div class="page" id="pg-agenda">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
+    <div class="pg-title">AGENDA</div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btg btn-sm" onclick="exportCSV()">⬇ CSV</button>
+      <button class="btn btp btn-sm" onclick="openModal('modal-agendar')">+ Novo</button>
+    </div>
+  </div>
+  <div class="pg-sub" id="sched-sub">—</div>
+  <div class="search-box"><span style="color:var(--muted)">🔍</span><input type="text" id="sched-search" placeholder="Buscar placa, motorista, NF..." oninput="renderFullSched()"></div>
+  <div class="chips" id="sched-chips">
+    <button class="chip on" onclick="filterSched('all',this)">Todos</button>
+    <button class="chip" onclick="filterSched('em-curso',this)">Em Curso</button>
+    <button class="chip" onclick="filterSched('confirmado',this)">Confirmado</button>
+    <button class="chip" onclick="filterSched('agendado',this)">Agendado</button>
+    <button class="chip" onclick="filterSched('pendente',this)">Pendente</button>
+    <button class="chip" onclick="filterSched('cancelado',this)">Cancelado</button>
+  </div>
+  <div style="margin-bottom:10px"><input type="date" class="finp" id="sched-date" oninput="renderFullSched()" style="font-size:12px"></div>
+  <div class="card" style="margin-bottom:80px">
+    <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Data/Hora</th><th>Placa</th><th>Motorista</th><th>Doca</th><th>Tipo</th><th>Status</th><th>NF</th><th></th></tr></thead>
+    <tbody id="full-sched"></tbody></table></div>
+  </div>
+</div>
+
+<!-- FILA -->
+<div class="page" id="pg-fila">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
+    <div class="pg-title">FILA</div>
+    <button class="btn btp btn-sm" onclick="openModal('modal-fila')">+ Registrar</button>
+  </div>
+  <div class="pg-sub" id="queue-sub">—</div>
+  <div class="card" style="margin-bottom:12px"><div id="full-queue"></div></div>
+  <div class="card" style="margin-bottom:80px">
+    <div class="card-h"><span class="card-t">Estimativas</span></div>
+    <div style="padding:12px 14px" id="wait-times"></div>
+  </div>
+</div>
+
+<!-- HISTÓRICO -->
+<div class="page" id="pg-historico">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
+    <div class="pg-title">HISTÓRICO</div>
+    <button class="btn btr btn-sm" onclick="confirmAct('Limpar histórico?','Todos os logs serão apagados.',clearHistory)">🗑 Limpar</button>
+  </div>
+  <div class="pg-sub">Log de todas as operações</div>
+  <div class="search-box"><span style="color:var(--muted)">🔍</span><input type="text" id="hist-search" placeholder="Filtrar..." oninput="renderHistory()"></div>
+  <div class="chips" id="hist-chips">
+    <button class="chip on" onclick="filterHist('all',this)">Todos</button>
+    <button class="chip" onclick="filterHist('op',this)">Operações</button>
+    <button class="chip" onclick="filterHist('fila',this)">Fila</button>
+    <button class="chip" onclick="filterHist('fin',this)">Finalizados</button>
+    <button class="chip" onclick="filterHist('cancel',this)">Cancelados</button>
+  </div>
+  <div class="card" style="margin-bottom:80px" id="history-list"></div>
+</div>
+
+<!-- CONFIG -->
+<div class="page" id="pg-config">
+  <div class="pg-title">CONFIGURAÇÕES</div>
+  <div class="pg-sub">Parâmetros do CD</div>
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-h"><span class="card-t">Centro de Distribuição</span></div>
+    <div class="mbody">
+      <div class="fg"><label class="flbl">Nome do CD</label><input class="finp" id="cfg-name" type="text" placeholder="Ex: CD Guarulhos"></div>
+      <div class="frow">
+        <div class="fg"><label class="flbl">Total de Docas <span class="req">*</span></label><input class="finp" id="cfg-docks" type="number" min="1" max="100" placeholder="6"></div>
+        <div class="fg"><label class="flbl">Tempo Padrão (min)</label><input class="finp" id="cfg-time" type="number" min="10"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-h"><span class="card-t">Turnos</span></div>
+    <div class="mbody">
+      <div class="frow" style="margin-bottom:10px">
+        <div class="fg"><label class="flbl">Turno A — Início</label><input class="finp" id="cfg-ta-s" type="time"></div>
+        <div class="fg"><label class="flbl">Turno A — Fim</label><input class="finp" id="cfg-ta-e" type="time"></div>
+      </div>
+      <div class="frow" style="margin-bottom:10px">
+        <div class="fg"><label class="flbl">Turno B — Início</label><input class="finp" id="cfg-tb-s" type="time"></div>
+        <div class="fg"><label class="flbl">Turno B — Fim</label><input class="finp" id="cfg-tb-e" type="time"></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="flbl">Turno C — Início</label><input class="finp" id="cfg-tc-s" type="time"></div>
+        <div class="fg"><label class="flbl">Turno C — Fim</label><input class="finp" id="cfg-tc-e" type="time"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-h"><span class="card-t">Transportadoras</span><button class="btn btp btn-sm" onclick="openModal('modal-carrier')">+ Add</button></div>
+    <div id="carrier-list"></div>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-h"><span class="card-t">Dados</span></div>
+    <div>
+      <div class="srow"><div><div>Exportar agendamentos</div><div class="slabel2">CSV para Excel</div></div><button class="btn btg btn-sm" onclick="exportCSV()">⬇ CSV</button></div>
+      <div class="srow"><div><div>Zerar turno</div><div class="slabel2">Limpa fila e histórico</div></div><button class="btn btr btn-sm" onclick="confirmAct('Zerar turno?','Fila e histórico serão limpos.',resetShift)">Zerar</button></div>
+      <div class="srow"><div><div>Resetar tudo</div><div class="slabel2">Apaga TODOS os dados</div></div><button class="btn btr btn-sm" onclick="confirmAct('RESETAR TUDO?','Dados permanentemente apagados.',hardReset)">Reset</button></div>
+    </div>
+  </div>
+  <button class="btn btp btn-bl" onclick="saveConfig()">💾 Salvar Configurações</button>
+</div>
+
+</div><!-- /shell -->
+
+<!-- DETAIL PANEL -->
+<div class="dpanel" id="dpanel">
+  <button class="dback" onclick="closeDetail()">← Voltar</button>
+  <div id="dpanel-c"></div>
+  <div style="height:80px"></div>
+</div>
+
+<nav class="bnav">
+  <button class="ni active" onclick="goPage('dashboard',this)"><span class="ic">📊</span>Dashboard</button>
+  <button class="ni" onclick="goPage('docas',this)"><span class="ic">🚪</span>Docas</button>
+  <button class="ni" onclick="goPage('agenda',this)"><span class="ic">📅</span>Agenda</button>
+  <button class="ni" onclick="goPage('fila',this)"><span class="ic">🚛</span>Fila<span class="bdg" id="fila-bdg">0</span></button>
+  <button class="ni" onclick="goPage('historico',this)"><span class="ic">📋</span>Histórico</button>
+</nav>
+
+<!-- MODAL AGENDAR -->
+<div class="overlay" id="modal-agendar">
+<div class="modal">
+  <div class="mhandle"></div>
+  <div class="mhead"><span class="mtitle" id="mag-title">Novo Agendamento</span><button class="mclose" onclick="closeModal('modal-agendar')">✕</button></div>
+  <div class="mbody">
+    <input type="hidden" id="f-eid">
+    <div class="frow">
+      <div class="fg"><label class="flbl">Placa <span class="req">*</span></label><input class="finp mono" id="f-placa" type="text" placeholder="ABC-1234" maxlength="8" autocapitalize="characters" autocomplete="off"></div>
+      <div class="fg"><label class="flbl">Veículo</label><select class="fsel" id="f-veiculo"><option>Caminhão Toco</option><option>Truck</option><option>Carreta Simples</option><option>Carreta Bitruck</option><option>Bitrem</option><option>Furgão</option><option>Van</option></select></div>
+    </div>
+    <div class="fg"><label class="flbl">Motorista <span class="req">*</span></label><input class="finp" id="f-motorista" type="text" placeholder="Nome completo" autocomplete="off"></div>
+    <div class="fg"><label class="flbl">CPF</label><input class="finp" id="f-cpf" type="text" placeholder="000.000.000-00" inputmode="numeric"></div>
+    <div class="frow">
+      <div class="fg"><label class="flbl">Transportadora</label><select class="fsel" id="f-carrier"></select></div>
+      <div class="fg"><label class="flbl">Doca</label><select class="fsel" id="f-doca"><option value="">Qualquer livre</option></select></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="flbl">Data <span class="req">*</span></label><input class="finp" id="f-data" type="date"></div>
+      <div class="fg"><label class="flbl">Horário <span class="req">*</span></label><input class="finp" id="f-hora" type="time"></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="flbl">Operação</label><select class="fsel" id="f-tipo"><option>Carregamento</option><option>Descarga</option><option>Transferência</option><option>Devolução</option><option>Coleta</option></select></div>
+      <div class="fg"><label class="flbl">NF / Pedido</label><input class="finp" id="f-nf" type="text" placeholder="NF-000000" autocomplete="off"></div>
+    </div>
+    <div class="fg"><label class="flbl">Observações</label><textarea class="fta" id="f-obs" placeholder="Produto especial, PPCP, lacre..."></textarea></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn btg" style="flex:1" onclick="closeModal('modal-agendar')">Cancelar</button>
+    <button class="btn btp" style="flex:2" onclick="saveSched()">✓ Confirmar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL FILA -->
+<div class="overlay" id="modal-fila">
+<div class="modal">
+  <div class="mhandle"></div>
+  <div class="mhead"><span class="mtitle">Registrar na Fila</span><button class="mclose" onclick="closeModal('modal-fila')">✕</button></div>
+  <div class="mbody">
+    <div class="frow">
+      <div class="fg"><label class="flbl">Placa <span class="req">*</span></label><input class="finp mono" id="q-placa" type="text" placeholder="ABC-1234" maxlength="8" autocapitalize="characters" autocomplete="off"></div>
+      <div class="fg"><label class="flbl">Veículo</label><select class="fsel" id="q-veiculo"><option>Caminhão Toco</option><option>Truck</option><option>Carreta Simples</option><option>Bitrem</option><option>Furgão</option><option>Van</option></select></div>
+    </div>
+    <div class="fg"><label class="flbl">Motorista</label><input class="finp" id="q-motorista" type="text" placeholder="Nome completo"></div>
+    <div class="fg"><label class="flbl">Transportadora</label><select class="fsel" id="q-carrier"></select></div>
+    <div class="frow">
+      <div class="fg"><label class="flbl">Operação</label><select class="fsel" id="q-tipo"><option>Carregamento</option><option>Descarga</option><option>Transferência</option><option>Devolução</option><option>Coleta</option></select></div>
+      <div class="fg"><label class="flbl">Prioridade</label><select class="fsel" id="q-priority"><option value="0">Normal</option><option value="1">⚡ Prioritário</option></select></div>
+    </div>
+    <div class="fg"><label class="flbl">NF / Pedido</label><input class="finp" id="q-nf" type="text" placeholder="NF-000000"></div>
+    <div class="fg"><label class="flbl">Observações</label><textarea class="fta" id="q-obs" placeholder="Informações adicionais..."></textarea></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn btg" style="flex:1" onclick="closeModal('modal-fila')">Cancelar</button>
+    <button class="btn btp" style="flex:2" onclick="addQueue()">+ Entrar na Fila</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL INICIAR DOCA -->
+<div class="overlay" id="modal-iniciar">
+<div class="modal">
+  <div class="mhandle"></div>
+  <div class="mhead"><span class="mtitle" id="ini-title">Iniciar Operação</span><button class="mclose" onclick="closeModal('modal-iniciar')">✕</button></div>
+  <div class="mbody" id="ini-body"></div>
+  <div class="mfoot">
+    <button class="btn btg" style="flex:1" onclick="closeModal('modal-iniciar')">Cancelar</button>
+    <button class="btn btp" style="flex:2" id="btn-ini">▶ Iniciar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL CHAMAR -->
+<div class="overlay" id="modal-chamar">
+<div class="modal">
+  <div class="mhandle"></div>
+  <div class="mhead"><span class="mtitle">Chamar para Doca</span><button class="mclose" onclick="closeModal('modal-chamar')">✕</button></div>
+  <div class="mbody" id="chamar-body"></div>
+  <div class="mfoot">
+    <button class="btn btg" style="flex:1" onclick="closeModal('modal-chamar')">Cancelar</button>
+    <button class="btn btp" style="flex:2" id="btn-chamar">📢 Confirmar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL TRANSPORTADORA -->
+<div class="overlay" id="modal-carrier">
+<div class="modal">
+  <div class="mhandle"></div>
+  <div class="mhead"><span class="mtitle">Nova Transportadora</span><button class="mclose" onclick="closeModal('modal-carrier')">✕</button></div>
+  <div class="mbody">
+    <div class="fg"><label class="flbl">Nome <span class="req">*</span></label><input class="finp" id="c-name" type="text" placeholder="Nome da transportadora"></div>
+    <div class="fg"><label class="flbl">CNPJ</label><input class="finp" id="c-cnpj" type="text" placeholder="00.000.000/0000-00" inputmode="numeric"></div>
+    <div class="fg"><label class="flbl">Contato / Telefone</label><input class="finp" id="c-phone" type="tel" placeholder="(11) 99999-9999"></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn btg" style="flex:1" onclick="closeModal('modal-carrier')">Cancelar</button>
+    <button class="btn btp" style="flex:2" onclick="saveCarrier()">+ Adicionar</button>
+  </div>
+</div>
+</div>
+
+<!-- CONFIRM -->
+<div class="confirm-overlay" id="confirm-ov">
+  <div class="confirm-box">
+    <div class="confirm-title" id="conf-title">Confirmar</div>
+    <div class="confirm-msg" id="conf-msg">Tem certeza?</div>
+    <div class="confirm-btns">
+      <button class="btn btg" style="flex:1" onclick="g('confirm-ov').classList.remove('open')">Cancelar</button>
+      <button class="btn btr" style="flex:1" id="conf-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="tw" id="tw"></div>
+
+<!-- Firebase SDK -->
+<script type="module" src="firebase.js"></script>
+<!-- App JS -->
+<script src="app.js"></script>
+
+</body>
+</html>

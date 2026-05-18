@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Regras para uso interno (rede local / Vercel) ──
+    // ATENÇÃO: Em produção, adicione autenticação Firebase Auth
+    // e restrinja as regras por usuário autenticado.
+
+    // Config do sistema — leitura aberta, escrita restrita
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if true; // TODO: restringir após adicionar auth
+    }
+
+    // Docas — leitura e escrita abertas (usuários internos)
+    match /docks/{dockId} {
+      allow read, write: if true;
+    }
+
+    // Fila de espera — leitura e escrita abertas
+    match /queue/{queueId} {
+      allow read, write: if true;
+    }
+
+    // Agendamentos — leitura e escrita abertas
+    match /schedules/{schedId} {
+      allow read, write: if true;
+    }
+
+    // Histórico — leitura aberta, só escrita (append)
+    match /history/{histId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false; // Histórico é imutável
+    }
+
+    // Transportadoras — leitura e escrita abertas
+    match /carriers/{carrierId} {
+      allow read, write: if true;
+    }
+
+    // Stats — leitura e escrita abertas
+    match /stats/{statId} {
+      allow read, write: if true;
+    }
+  }
+}

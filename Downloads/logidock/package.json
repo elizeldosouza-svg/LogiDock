@@ -1,0 +1,14 @@
+{
+  "name": "logidock",
+  "version": "1.0.0",
+  "description": "Sistema de gestão de docas e agendamentos de carregamento para centros de distribuição",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve public -p 3000",
+    "build": "echo 'Static site - no build step required'",
+    "deploy": "vercel --prod"
+  },
+  "keywords": ["logistica", "docas", "carregamento", "centro-distribuicao"],
+  "author": "",
+  "license": "UNLICENSED"
+}
