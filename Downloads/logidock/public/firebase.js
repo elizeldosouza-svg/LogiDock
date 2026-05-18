@@ -13,12 +13,12 @@ import {
 // ── CONFIG: cole aqui as credenciais do seu projeto Firebase ──
 // Obtenha em: Firebase Console → Configurações do projeto → Seus apps → SDK
 const firebaseConfig = {
-  apiKey:            "COLE_AQUI_apiKey",
-  authDomain:        "COLE_AQUI_authDomain",
-  projectId:         "COLE_AQUI_projectId",
-  storageBucket:     "COLE_AQUI_storageBucket",
-  messagingSenderId: "COLE_AQUI_messagingSenderId",
-  appId:             "COLE_AQUI_appId"
+  apiKey: "AIzaSyAz8-6nzvxdE-IrdcAzAMfcEcbiRxT6QX8",
+  authDomain: "logidock.firebaseapp.com",
+  projectId: "logidock",
+  storageBucket: "logidock.firebasestorage.app",
+  messagingSenderId: "589100542835",
+  appId: "1:589100542835:web:be67cf7ef9bb3178083306"
 };
 
 // ── Inicializa Firebase ──
