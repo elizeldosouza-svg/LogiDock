@@ -1,10 +1,1 @@
-{
-  "version": 2,
-  "outputDirectory": "public",
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ]
-}
+{}
