@@ -750,7 +750,14 @@ tbody tr:hover td{background:var(--surface2)}
           🔥 Firebase — Banco de Dados em Nuvem
           <span id="fb-badge" style="font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px;background:var(--surface2);color:var(--text3)">Offline</span>
         </div>
-        <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6">Cole as credenciais do Firebase para sincronizar dados entre todos os dispositivos em tempo real. Sem Firebase, o sistema usa apenas armazenamento local.</p>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6">
+  Configure as credenciais do Firebase para sincronizar dados em tempo real entre <strong>todos os dispositivos</strong>.
+  Após salvar clicando em <strong>Atualizar Credenciais</strong>, atualize também o arquivo <code>index.html</code>
+  no GitHub com os valores em <code>FB_CONFIG_BUILTIN</code> para que todos os usuários conectem automaticamente.
+</p>
+<div id="fb-status-bar" style="margin-bottom:14px;padding:10px 14px;border-radius:8px;font-size:12px;font-weight:500;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);color:var(--amber);display:none">
+  ⚠️ Firebase offline — os dados são visíveis apenas neste navegador
+</div>
         <div class="form-grid">
           <div class="form-group form-full"><label>API Key</label><input type="text" id="fb-apikey" placeholder="AIzaSy..." autocomplete="off"/></div>
           <div class="form-group"><label>Project ID</label><input type="text" id="fb-projectid" placeholder="meu-projeto-xxxxx"/></div>
@@ -843,6 +850,21 @@ tbody tr:hover td{background:var(--surface2)}
 if (typeof Chart === 'undefined') {
   window.Chart = function(ctx, cfg) { return { destroy: function(){}, update: function(){}, data: cfg && cfg.data ? cfg.data : {} }; };
 }
+
+// ═══════════════════════════════════════════════
+//  FIREBASE CONFIG — EMBUTIDA NO CÓDIGO
+//  ⚠️  Substitua pelos valores reais do seu projeto Firebase
+//  Estes valores são compartilhados com TODOS os usuários
+// ═══════════════════════════════════════════════
+window.FB_CONFIG_BUILTIN = {
+  apiKey:            "AIzaSyAz8-6nzvxdE-IrdcAzAMfcEcbiRxT6QX8",
+  authDomain:        "logidock.firebaseapp.com",
+  projectId:         "logidock",
+  storageBucket:     "logidock.firebasestorage.app",
+  messagingSenderId: "589100542835",
+  appId:             "1:589100542835:web:be67cf7ef9bb3178083306"
+};
+
 // ═══════════════════════════════════════════════
 //  BANCO DE DADOS (localStorage)
 // ═══════════════════════════════════════════════
@@ -2035,14 +2057,19 @@ let fbDB = null, fbListeners = [], fbReady = false;
 // ── Exibe credenciais salvas no form ────────────
 function fbLoadCreds() {
   try {
+    // Prioriza localStorage, fallback para config embutida
+    let c = null;
     const saved = localStorage.getItem(FB_CFG_KEY);
-    if (!saved) return;
-    const c = JSON.parse(saved);
+    if (saved) c = JSON.parse(saved);
+    if (!c || c.apiKey.startsWith('COLE_AQUI')) c = window.FB_CONFIG_BUILTIN;
+    if (!c) return;
     const el = (id) => document.getElementById(id);
     if (c.apiKey)     el('fb-apikey').value     = c.apiKey;
     if (c.projectId)  el('fb-projectid').value  = c.projectId;
     if (c.appId)      el('fb-appid').value       = c.appId;
     if (c.authDomain) el('fb-authdomain').value  = c.authDomain;
+    // Atualiza badge se já conectado
+    if (fbReady) fbSetBadge(true);
   } catch(e) {}
 }
 
@@ -2058,7 +2085,11 @@ function fbConnect() {
   }
   const cfg = { apiKey, projectId, appId, authDomain,
     storageBucket: projectId + '.appspot.com', messagingSenderId: '' };
+  // Salva no localStorage para persistência nesta máquina
   localStorage.setItem(FB_CFG_KEY, JSON.stringify(cfg));
+  // Atualiza config em memória (válido para esta sessão)
+  window.FB_CONFIG_BUILTIN = cfg;
+  showToast('ok', 'Credenciais salvas! Conectando...');
   fbLoadSDK(cfg);
 }
 
@@ -2075,10 +2106,16 @@ function fbDisconnect() {
 
 function fbSetBadge(on) {
   const b = document.getElementById('fb-badge');
-  if (!b) return;
-  b.textContent = on ? '🟢 Conectado' : 'Offline';
-  b.style.background = on ? 'rgba(46,204,143,.12)' : 'var(--surface2)';
-  b.style.color      = on ? 'var(--green)' : 'var(--text3)';
+  if (b) {
+    b.textContent = on ? '🟢 Conectado' : '🔴 Offline';
+    b.style.background = on ? 'rgba(46,204,143,.12)' : 'rgba(224,92,92,.12)';
+    b.style.color      = on ? 'var(--green)' : 'var(--red)';
+  }
+  const bar = document.getElementById('fb-status-bar');
+  if (bar) bar.style.display = on ? 'none' : 'block';
+  // Aviso no topbar se offline
+  const nav = document.getElementById('sb-user-role');
+  if (nav && !on) nav.title = 'Firebase offline — dados apenas locais';
 }
 
 // ── Carrega SDK Firebase via ESM ────────────────
@@ -2333,15 +2370,27 @@ document.addEventListener('DOMContentLoaded', () => {
     fbWriteAdminSenha(db.admin.senha);
   };
 
-  // Auto-reconecta se havia credenciais salvas
-  const saved = localStorage.getItem(FB_CFG_KEY);
-  if (saved) {
+  // Auto-conecta: prioridade 1 = localStorage (configurado pelo admin via tela)
+  //               prioridade 2 = config embutida no código (padrão para todos)
+  function resolveFirebaseCfg() {
     try {
-      const c = JSON.parse(saved);
-      if (c.apiKey && c.projectId) {
-        setTimeout(() => fbLoadSDK(c), 800);
+      const saved = localStorage.getItem(FB_CFG_KEY);
+      if (saved) {
+        const c = JSON.parse(saved);
+        if (c.apiKey && c.projectId && !c.apiKey.startsWith('COLE_AQUI')) return c;
       }
     } catch(e) {}
+    // Fallback para config embutida
+    const b = window.FB_CONFIG_BUILTIN;
+    if (b && b.apiKey && !b.apiKey.startsWith('COLE_AQUI') && b.projectId) return b;
+    return null;
+  }
+
+  const fbCfgToUse = resolveFirebaseCfg();
+  if (fbCfgToUse) {
+    setTimeout(() => fbLoadSDK(fbCfgToUse), 400);
+  } else {
+    console.warn('Firebase: nenhuma credencial configurada. Rode em modo local.');
   }
 
 });
