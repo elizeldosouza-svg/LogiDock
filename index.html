@@ -3,9 +3,23 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Grade de Carregamento</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<title>Grade de Carregamento — LogiDock</title>
+<meta name="description" content="Sistema integrado de gestão de docas e agendamentos logísticos">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<script>
+// Carrega Chart.js de forma segura com fallback
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js';
+  s.onerror = function() {
+    console.warn('Chart.js não carregou. Gráficos indisponíveis.');
+    window.Chart = function() { return { destroy: function(){}, update: function(){} }; };
+  };
+  document.head.appendChild(s);
+})();
+</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -825,6 +839,10 @@ tbody tr:hover td{background:var(--surface2)}
 </div>
 
 <script>
+// Guard: se Chart.js não carregou, evita erros
+if (typeof Chart === 'undefined') {
+  window.Chart = function(ctx, cfg) { return { destroy: function(){}, update: function(){}, data: cfg && cfg.data ? cfg.data : {} }; };
+}
 // ═══════════════════════════════════════════════
 //  BANCO DE DADOS (localStorage)
 // ═══════════════════════════════════════════════
