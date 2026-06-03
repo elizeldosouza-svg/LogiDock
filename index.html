@@ -19,6 +19,13 @@
   };
   document.head.appendChild(s);
 })();
+// Carrega SheetJS para leitura/geração de XLSX
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onerror = function() { console.warn('SheetJS não carregou.'); };
+  document.head.appendChild(s);
+})();
 </script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -239,6 +246,25 @@ tbody tr:hover td{background:var(--surface2)}
 .color-swatch{width:26px;height:26px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:transform .15s,border-color .15s;flex-shrink:0}
 .color-swatch:hover{transform:scale(1.15)}
 .color-swatch.active{border-color:#fff}
+
+/* IMPORTAÇÃO XLSX */
+.import-drop{border:2px dashed var(--border2);border-radius:var(--rl);padding:32px 20px;text-align:center;transition:all .2s;cursor:pointer;position:relative}
+.import-drop:hover,.import-drop.over{border-color:var(--green);background:var(--green-l)}
+.import-drop svg{width:36px;height:36px;stroke:currentColor;fill:none;stroke-width:1.5;display:block;margin:0 auto 10px;color:var(--text3)}
+.import-drop p{font-size:13px;color:var(--text2);margin:0}
+.import-drop small{font-size:11px;color:var(--text3)}
+.import-drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.import-preview{max-height:260px;overflow-y:auto;border-radius:var(--r);border:1px solid var(--border)}
+.import-preview table{font-size:11px;min-width:600px}
+.import-preview thead th{font-size:10px;padding:7px 10px}
+.import-preview tbody td{padding:7px 10px;font-size:11px}
+.row-ok td:first-child{border-left:3px solid var(--green)}
+.row-warn td:first-child{border-left:3px solid var(--amber)}
+.row-err td:first-child{border-left:3px solid var(--red)}
+.import-summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.import-summary-item{flex:1;min-width:80px;text-align:center;padding:10px 8px;border-radius:var(--r);border:1px solid var(--border)}
+.import-summary-item strong{display:block;font-size:20px;font-weight:600;font-family:var(--mono)}
+.import-summary-item span{font-size:11px;color:var(--text2)}
 
 /* GRADE DE HORÁRIOS */
 .grade-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px;margin-bottom:16px}
@@ -667,10 +693,16 @@ tbody tr:hover td{background:var(--surface2)}
     <div class="view" id="view-transportadoras">
       <div class="header-row">
         <div><div class="page-title">Transportadoras</div><div class="page-sub">Cadastre, edite senhas e gerencie acessos</div></div>
-        <button class="btn btn-primary" onclick="openModalTrans(null)">
-          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Nova transportadora
-        </button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-outline" onclick="openModalImportXlsx()">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Importar XLSX
+          </button>
+          <button class="btn btn-primary" onclick="openModalTrans(null)">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nova transportadora
+          </button>
+        </div>
       </div>
       <div class="trans-grid" id="trans-grid"><div class="spinner"></div></div>
     </div>
@@ -776,6 +808,60 @@ tbody tr:hover td{background:var(--surface2)}
 
   </div><!-- /main -->
 </div><!-- /app-shell -->
+
+<!-- ═══ MODAL: IMPORTAR XLSX ═══ -->
+<div class="modal-overlay" id="modal-import-xlsx">
+  <div class="modal" style="max-width:680px;width:100%">
+    <div class="modal-header">
+      <div class="modal-title" id="import-modal-title">Importar transportadoras via XLSX</div>
+      <button class="modal-close" onclick="closeModal('modal-import-xlsx')"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+
+    <!-- PASSO 1: Upload -->
+    <div id="import-step-1">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px">
+        Importe um arquivo <strong>.xlsx</strong> com os dados de transportadora, motorista e veículo. Cada linha do arquivo será cadastrada automaticamente.
+      </p>
+      <div style="margin-bottom:14px">
+        <button class="btn btn-outline btn-sm" onclick="downloadModeloXlsx()">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Baixar modelo .xlsx
+        </button>
+        <span style="font-size:11px;color:var(--text3);margin-left:10px">Preencha o modelo e importe abaixo</span>
+      </div>
+      <div class="import-drop" id="import-drop-zone" ondragover="xlsxDragOver(event)" ondragleave="xlsxDragLeave(event)" ondrop="xlsxDrop(event)">
+        <input type="file" accept=".xlsx,.xls" onchange="xlsxFileSelected(this)"/>
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        <p>Arraste o arquivo aqui ou clique para selecionar</p>
+        <small>Formatos aceitos: .xlsx · Máx. 5 MB</small>
+      </div>
+    </div>
+
+    <!-- PASSO 2: Preview + resumo -->
+    <div id="import-step-2" style="display:none">
+      <div class="import-summary" id="import-summary-boxes"></div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:14px">
+        <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green)"></span>Pronto para importar</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--amber)"></span>Duplicado (alerta)</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--red)"></span>Erro (campo obrigatório)</span>
+      </div>
+      <div class="import-preview" id="import-preview-wrap"></div>
+      <div id="import-errors-wrap" style="display:none;margin-top:10px;background:var(--red-l);border:1px solid rgba(224,92,92,.25);border-radius:var(--r);padding:12px 14px;font-size:12px;color:var(--red)"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="xlsxResetar()" id="btn-import-voltar" style="display:none">
+        <svg viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Voltar
+      </button>
+      <button class="btn btn-outline" onclick="closeModal('modal-import-xlsx')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-import-confirmar" style="display:none" onclick="confirmarImportXlsx()">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Confirmar importação
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ MODAL: TRANSPORTADORA ═══ -->
 <div class="modal-overlay" id="modal-trans">
@@ -953,7 +1039,7 @@ function enterApp() {
   document.getElementById('app-shell').style.display = 'flex';
   applySession();
   const n = new Date();
-  document.getElementById('f-data').value = today();
+  document.getElementById('f-data').valueAsDate = n;
   document.getElementById('painel-date').value = today();
   document.getElementById('todos-date').value = today();
   document.getElementById('checkin-date').value = today();
@@ -1056,7 +1142,7 @@ function clearForm() {
   renderGrade();
   ['f-motorista','f-cpf','f-tel','f-placa','f-produto','f-qtd','f-nf','f-origem','f-hora','f-obs'].forEach(id => document.getElementById(id).value='');
   document.getElementById('f-tipo').selectedIndex = 0;
-  document.getElementById('f-data').value = today();
+  document.getElementById('f-data').valueAsDate = new Date();
 }
 
 // ═══════════════════════════════════════════════
@@ -1360,9 +1446,310 @@ function pickColor(el) {
 }
 
 // ═══════════════════════════════════════════════
-//  CONFIGURAÇÕES
+//  IMPORTAÇÃO XLSX — TRANSPORTADORAS
 // ═══════════════════════════════════════════════
-function loadConfig() {
+
+// Mapeamento de colunas esperadas no modelo
+const XLSX_COLS = [
+  { key:'transportadora', label:'Transportadora *',   required:true  },
+  { key:'motorista',      label:'Nome do Motorista *', required:true  },
+  { key:'cpf',            label:'CPF do Motorista *',  required:true  },
+  { key:'telefone',       label:'Telefone',            required:false },
+  { key:'placa',          label:'Placa *',             required:true  },
+  { key:'tipoVeiculo',    label:'Tipo de Veículo *',   required:true  },
+  { key:'produto',        label:'Produto *',           required:true  },
+  { key:'quantidade',     label:'Quantidade (ton) *',  required:true  },
+  { key:'notaFiscal',     label:'Nota Fiscal / Pedido Nº', required:false },
+  { key:'cidadeOrigem',   label:'Cidade de Origem *',  required:true  },
+];
+
+let xlsxRowsParsed = []; // cache dos dados lidos
+
+function openModalImportXlsx() {
+  xlsxResetar();
+  openModal('modal-import-xlsx');
+}
+
+function xlsxResetar() {
+  xlsxRowsParsed = [];
+  document.getElementById('import-step-1').style.display = '';
+  document.getElementById('import-step-2').style.display = 'none';
+  document.getElementById('btn-import-confirmar').style.display = 'none';
+  document.getElementById('btn-import-voltar').style.display = 'none';
+  document.getElementById('import-drop-zone').classList.remove('over');
+  // Reseta input file
+  const dz = document.getElementById('import-drop-zone');
+  const inp = dz.querySelector('input[type=file]');
+  if (inp) inp.value = '';
+}
+
+function xlsxDragOver(e)  { e.preventDefault(); document.getElementById('import-drop-zone').classList.add('over'); }
+function xlsxDragLeave(e) { document.getElementById('import-drop-zone').classList.remove('over'); }
+function xlsxDrop(e) {
+  e.preventDefault();
+  document.getElementById('import-drop-zone').classList.remove('over');
+  const file = e.dataTransfer.files[0];
+  if (file) processXlsxFile(file);
+}
+function xlsxFileSelected(input) {
+  if (input.files[0]) processXlsxFile(input.files[0]);
+}
+
+function processXlsxFile(file) {
+  if (!window.XLSX) { showToast('err','Biblioteca XLSX ainda carregando. Aguarde e tente novamente.'); return; }
+  if (file.size > 5 * 1024 * 1024) { showToast('err','Arquivo muito grande. Máximo 5 MB.'); return; }
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['xlsx','xls'].includes(ext)) { showToast('err','Formato inválido. Envie um arquivo .xlsx'); return; }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type:'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { defval:'' });
+      if (!raw.length) { showToast('err','Planilha vazia ou sem dados.'); return; }
+      xlsxValidarEPreview(raw);
+    } catch(err) {
+      showToast('err','Erro ao ler o arquivo: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function xlsxNormKey(str) {
+  return String(str).toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]/g,'');
+}
+
+// Mapeamento flexível: aceita variações de cabeçalho
+const XLSX_KEY_MAP = {
+  transportadora:  ['transportadora','transportadoras','empresa','carrier'],
+  motorista:       ['motorista','nomemotorista','nomedo motorista','driver','nome'],
+  cpf:             ['cpf','cpfmotorista','cpfdo motorista','documento'],
+  telefone:        ['telefone','fone','celular','tel','phone'],
+  placa:           ['placa','placaveiculo','placado veiculo','plate'],
+  tipoVeiculo:     ['tipoveiculo','tipode veiculo','tipo','veiculo','vehicle'],
+  produto:         ['produto','carga','mercadoria','product'],
+  quantidade:      ['quantidade','qtd','toneladas','ton','peso','weight','quantidadeton'],
+  notaFiscal:      ['notafiscal','nf','pedido','notafiscalpedido','nfpedido','numeronf'],
+  cidadeOrigem:    ['cidadeorigem','cidade','origem','cidadede origem','city','origin'],
+};
+
+function xlsxMapRow(rawRow) {
+  const normHeaders = {};
+  Object.keys(rawRow).forEach(h => { normHeaders[xlsxNormKey(h)] = rawRow[h]; });
+  const out = {};
+  XLSX_COLS.forEach(col => {
+    const aliases = XLSX_KEY_MAP[col.key] || [col.key];
+    let val = '';
+    for (const alias of aliases) {
+      if (normHeaders[alias] !== undefined) { val = String(normHeaders[alias]).trim(); break; }
+    }
+    out[col.key] = val;
+  });
+  return out;
+}
+
+function xlsxValidarEPreview(raw) {
+  const db = getDB();
+  const placasExistentes = new Set(db.registros.map(r => (r.placa||'').toUpperCase()));
+  const cpfsExistentes   = new Set(db.registros.map(r => (r.cpf||'').replace(/\D/g,'')));
+  const transExistentes  = new Set(db.transportadoras.map(t => t.nome.toUpperCase().trim()));
+
+  xlsxRowsParsed = [];
+  const errosGlobais = [];
+
+  raw.forEach((rawRow, idx) => {
+    const row = xlsxMapRow(rawRow);
+    const linha = idx + 2; // linha do excel (1=header)
+    const erros = [];
+    const alertas = [];
+
+    // Validação de obrigatórios
+    XLSX_COLS.forEach(col => {
+      if (col.required && !row[col.key]) {
+        erros.push(`Campo obrigatório ausente: <strong>${col.label.replace(' *','')}</strong>`);
+      }
+    });
+
+    // Alertas de duplicidade
+    if (row.placa && placasExistentes.has(row.placa.toUpperCase())) {
+      alertas.push(`Placa <strong>${row.placa}</strong> já cadastrada`);
+    }
+    if (row.cpf) {
+      const cpfNum = row.cpf.replace(/\D/g,'');
+      if (cpfsExistentes.has(cpfNum)) alertas.push(`CPF <strong>${row.cpf}</strong> já cadastrado`);
+    }
+    if (row.transportadora && transExistentes.has(row.transportadora.toUpperCase().trim())) {
+      alertas.push(`Transportadora <strong>${row.transportadora}</strong> já existe — será vinculada`);
+    }
+
+    const status = erros.length ? 'err' : alertas.length ? 'warn' : 'ok';
+    if (erros.length) errosGlobais.push(`Linha ${linha}: ${erros.join('; ')}`);
+
+    xlsxRowsParsed.push({ linha, row, erros, alertas, status });
+  });
+
+  renderImportPreview(errosGlobais);
+}
+
+function renderImportPreview(errosGlobais) {
+  const total = xlsxRowsParsed.length;
+  const ok    = xlsxRowsParsed.filter(r=>r.status==='ok').length;
+  const warn  = xlsxRowsParsed.filter(r=>r.status==='warn').length;
+  const err   = xlsxRowsParsed.filter(r=>r.status==='err').length;
+
+  // Resumo
+  document.getElementById('import-summary-boxes').innerHTML = `
+    <div class="import-summary-item"><strong>${total}</strong><span>Total de linhas</span></div>
+    <div class="import-summary-item" style="border-color:rgba(46,204,143,.3)"><strong style="color:var(--green)">${ok}</strong><span>Prontos</span></div>
+    <div class="import-summary-item" style="border-color:rgba(245,166,35,.3)"><strong style="color:var(--amber)">${warn}</strong><span>Alertas</span></div>
+    <div class="import-summary-item" style="border-color:rgba(224,92,92,.3)"><strong style="color:var(--red)">${err}</strong><span>Com erro</span></div>
+  `;
+
+  // Tabela preview
+  const thead = `<thead><tr>
+    <th>#</th>
+    ${XLSX_COLS.map(c=>`<th>${c.label.replace(' *','')}</th>`).join('')}
+    <th>Status</th>
+  </tr></thead>`;
+
+  const tbody = xlsxRowsParsed.map(item => {
+    const cls = `row-${item.status}`;
+    const statusHtml = item.status === 'ok'
+      ? `<span class="badge badge-ok">OK</span>`
+      : item.status === 'warn'
+      ? `<span class="badge badge-warn" title="${item.alertas.join('; ')}">Alerta</span>`
+      : `<span class="badge badge-danger" title="${item.erros.join('; ')}">Erro</span>`;
+    const cells = XLSX_COLS.map(c => `<td>${item.row[c.key]||'—'}</td>`).join('');
+    return `<tr class="${cls}"><td>${item.linha}</td>${cells}<td>${statusHtml}</td></tr>`;
+  }).join('');
+
+  document.getElementById('import-preview-wrap').innerHTML = `<div class="table-wrap" style="margin:0;border:none"><table><${thead}<tbody>${tbody}</tbody></table></div>`;
+
+  // Erros detalhados
+  const errWrap = document.getElementById('import-errors-wrap');
+  if (errosGlobais.length) {
+    errWrap.style.display = '';
+    errWrap.innerHTML = `<strong>⚠ Erros encontrados — corrija no arquivo e reimporte:</strong><br>${errosGlobais.map(e=>`• ${e}`).join('<br>')}`;
+  } else {
+    errWrap.style.display = 'none';
+  }
+
+  // Mostrar passo 2
+  document.getElementById('import-step-1').style.display = 'none';
+  document.getElementById('import-step-2').style.display = '';
+  document.getElementById('btn-import-voltar').style.display = '';
+
+  const podeImportar = (ok + warn) > 0;
+  const btnConf = document.getElementById('btn-import-confirmar');
+  btnConf.style.display = podeImportar ? '' : 'none';
+  if (podeImportar) {
+    btnConf.textContent = '';
+    btnConf.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importar ${ok+warn} registro${ok+warn>1?'s':''}${err?' (ignorando '+err+' com erro)':''}`;
+  }
+}
+
+async function confirmarImportXlsx() {
+  const db = getDB();
+  const transExistentes = {};
+  db.transportadoras.forEach(t => { transExistentes[t.nome.toUpperCase().trim()] = t.id; });
+
+  const linhasValidas = xlsxRowsParsed.filter(r => r.status !== 'err');
+  if (!linhasValidas.length) { showToast('err','Nenhum registro válido para importar.'); return; }
+
+  let novosRegistros = 0;
+
+  linhasValidas.forEach(item => {
+    const r = item.row;
+    const nomeTransUpper = r.transportadora.toUpperCase().trim();
+
+    // Garante que a transportadora existe (cria se nova, senha padrão = nome sem espaços)
+    if (!transExistentes[nomeTransUpper]) {
+      const senhaDefault = r.transportadora.replace(/\s/g,'').toLowerCase() || 'senha123';
+      const novaTrans = {
+        id: 't' + Date.now() + Math.random().toString(36).slice(2,5),
+        nome: r.transportadora.trim(),
+        cnpj: '',
+        contato: r.telefone || '',
+        senha: btoa(senhaDefault),
+        cor: '#2ecc8f',
+        ativa: true
+      };
+      db.transportadoras.push(novaTrans);
+      transExistentes[nomeTransUpper] = novaTrans.id;
+      if (typeof fbWriteTrans === 'function') fbWriteTrans(novaTrans);
+    }
+
+    const transId = transExistentes[nomeTransUpper];
+    const trans   = db.transportadoras.find(t => t.id === transId);
+
+    const novoReg = {
+      id:            'r' + Date.now() + Math.random().toString(36).slice(2,6),
+      transId:       transId,
+      transNome:     trans ? trans.nome : r.transportadora.trim(),
+      motorista:     r.motorista,
+      cpf:           r.cpf,
+      telefone:      r.telefone,
+      placa:         r.placa.toUpperCase(),
+      tipoVeiculo:   r.tipoVeiculo,
+      produto:       r.produto,
+      quantidade:    parseFloat(String(r.quantidade).replace(',','.')) || 0,
+      notaFiscal:    r.notaFiscal,
+      cidadeOrigem:  r.cidadeOrigem,
+      dataPrevista:  today(),
+      horaPrevista:  '--:--',
+      status:        'Pendente',
+      aderencia:     '',
+      horaChegada:   '',
+      obs:           '',
+      origem:        'importacao_xlsx',
+    };
+
+    db.registros.push(novoReg);
+    if (typeof fbWriteReg === 'function') fbWriteReg(novoReg);
+    novosRegistros++;
+  });
+
+  saveDB(db);
+  closeModal('modal-import-xlsx');
+  loadTransGrid();
+  if (typeof populateLoginTrans === 'function') populateLoginTrans();
+  showToast('ok', `${novosRegistros} registro${novosRegistros>1?'s':''} importado${novosRegistros>1?'s':''} com sucesso!`);
+}
+
+function downloadModeloXlsx() {
+  if (!window.XLSX) { showToast('err','Biblioteca XLSX ainda carregando. Aguarde.'); return; }
+
+  const headers = XLSX_COLS.map(c => c.label);
+  const exemplo = [
+    'Transportadora Exemplo Ltda',
+    'João da Silva',
+    '123.456.789-00',
+    '(84) 99999-0000',
+    'ABC-1234',
+    'Carreta',
+    'Cimento',
+    '28',
+    'NF-001234',
+    'Mossoró - RN'
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, exemplo]);
+
+  // Largura das colunas
+  ws['!cols'] = XLSX_COLS.map(() => ({ wch: 22 }));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Importacao');
+  XLSX.writeFile(wb, 'modelo_importacao_logidock.xlsx');
+  showToast('ok', 'Modelo baixado com sucesso!');
+}
+
+// ── FIM IMPORTAÇÃO XLSX ────────────────────────────
+
+
   const db = getDB();
   document.getElementById('cfg-ntrans').textContent = db.transportadoras.length;
   document.getElementById('cfg-nreg').textContent   = db.registros.length;
@@ -2042,85 +2429,17 @@ window.addEventListener('storage', function(e) {
 });
 
 // ═══════════════════════════════════════════════
-//  FIREBASE — variáveis de estado (declaradas antes do boot)
+//  BOOT
+// ═══════════════════════════════════════════════
+populateLoginTrans();
+loadSession();
+if(session){enterApp();}
+
+// ═══════════════════════════════════════════════
+//  FIREBASE — integração corrigida v3.1
 // ═══════════════════════════════════════════════
 const FB_CFG_KEY = 'grade_fb_cfg';
 let fbDB = null, fbListeners = [], fbReady = false;
-
-// ═══════════════════════════════════════════════
-//  BOOT — aguarda Firebase antes de exibir login
-// ═══════════════════════════════════════════════
-
-// Injeta spinner de carregamento sobre a tela de login
-(function injectBootSpinner() {
-  const overlay = document.createElement('div');
-  overlay.id = 'boot-overlay';
-  overlay.style.cssText = [
-    'position:fixed','inset:0','background:var(--bg)',
-    'z-index:2000','display:flex','flex-direction:column',
-    'align-items:center','justify-content:center','gap:16px'
-  ].join(';');
-  overlay.innerHTML =
-    '<div style="width:36px;height:36px;border:3px solid rgba(46,204,143,.2);' +
-    'border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite"></div>' +
-    '<div style="font-size:13px;color:var(--text2)">Conectando ao servidor...</div>';
-  document.body.appendChild(overlay);
-})();
-
-function bootHideSpinner() {
-  const el = document.getElementById('boot-overlay');
-  if (el) el.remove();
-}
-
-// Tenta iniciar o Firebase e só depois exibe login/app
-async function bootStart() {
-  loadSession();
-
-  const cfg = (function resolveBootCfg() {
-    try {
-      const saved = localStorage.getItem('grade_fb_cfg');
-      if (saved) {
-        const c = JSON.parse(saved);
-        if (c.apiKey && c.projectId && !c.apiKey.startsWith('COLE_AQUI')) return c;
-      }
-    } catch(e) {}
-    const b = window.FB_CONFIG_BUILTIN;
-    if (b && b.apiKey && !b.apiKey.startsWith('COLE_AQUI') && b.projectId) return b;
-    return null;
-  })();
-
-  if (!cfg) {
-    // Sem Firebase configurado — modo local imediato
-    bootHideSpinner();
-    populateLoginTrans();
-    if (session) enterApp();
-    return;
-  }
-
-  // Carrega SDK Firebase e aguarda resultado (máx. 8s)
-  const timeout = new Promise(resolve => setTimeout(resolve, 8000));
-  const fbDone  = new Promise(resolve => {
-    window.addEventListener('fb-ready', resolve, { once: true });
-    window.addEventListener('fb-error', resolve, { once: true });
-  });
-
-  fbLoadSDK(cfg);
-  await Promise.race([fbDone, timeout]);
-
-  // Aguarda fbInitData terminar de fato (pode ainda estar em curso)
-  if (_fbInitDone) await _fbInitDone;
-
-  // Dados já no localStorage — exibe a interface
-  bootHideSpinner();
-  populateLoginTrans();
-  if (session) enterApp();
-}
-
-bootStart();
-
-// ═══════════════════════════════════════════════
-//  FIREBASE — integração corrigida v3.2
-// ═══════════════════════════════════════════════
 
 // ── Exibe credenciais salvas no form ────────────
 function fbLoadCreds() {
@@ -2217,16 +2536,12 @@ function fbLoadSDK(cfg) {
   document.head.appendChild(s);
 }
 
-// Promise resolvida quando fbInitData terminar — usada pelo bootStart
-let _fbInitDone = null;
-
 window.addEventListener('fb-ready', async () => {
   fbDB = window._fbAPI.db;
   fbReady = true;
   fbSetBadge(true);
   showToast('ok', '🔥 Firebase conectado! Sincronizando...');
-  _fbInitDone = fbInitData();
-  await _fbInitDone;
+  await fbInitData();
   fbStartListeners();
 });
 
@@ -2250,23 +2565,14 @@ async function fbInitData() {
     const db = getDB();
 
     if (tSnap.empty && rSnap.empty) {
-      // Firebase vazio → só sobe dados locais se houver conteúdo real cadastrado
-      const temConteudo = db.transportadoras.length > 0 || db.registros.length > 0;
-      if (temConteudo) {
-        for (const t of db.transportadoras)
-          await api.setDoc(api.doc(fbDB, 'transportadoras', t.id), t);
-        for (const r of db.registros)
-          await api.setDoc(api.doc(fbDB, 'registros', r.id), r);
-        if (!cfgSnap.exists())
-          await api.setDoc(api.doc(fbDB, 'config', 'admin'), { senha: db.admin.senha });
-        console.log('✅ Dados locais enviados ao Firebase');
-      } else {
-        // Novo dispositivo sem dados locais E Firebase vazio: apenas garante config admin
-        if (!cfgSnap.exists()) {
-          await api.setDoc(api.doc(fbDB, 'config', 'admin'), { senha: db.admin.senha });
-        }
-        console.log('ℹ️ Firebase e localStorage ambos vazios — aguardando primeiro cadastro');
-      }
+      // Firebase vazio → sobe dados locais
+      for (const t of db.transportadoras)
+        await api.setDoc(api.doc(fbDB, 'transportadoras', t.id), t);
+      for (const r of db.registros)
+        await api.setDoc(api.doc(fbDB, 'registros', r.id), r);
+      if (!cfgSnap.exists())
+        await api.setDoc(api.doc(fbDB, 'config', 'admin'), { senha: db.admin.senha });
+      console.log('✅ Dados locais enviados ao Firebase');
     } else {
       // Firebase tem dados → sincroniza para local
       if (!tSnap.empty) db.transportadoras = tSnap.docs.map(d => d.data());
@@ -2274,18 +2580,13 @@ async function fbInitData() {
       if (cfgSnap.exists()) db.admin        = cfgSnap.data();
       localStorage.setItem(DB_KEY, JSON.stringify(db));
       populateLoginTrans();
-      // Se o app já estava visível com dados vazios, atualiza tudo agora
-      const appVisible = document.getElementById('app-shell').style.display !== 'none';
       if (session && session.role === 'admin') {
-        if (appVisible) {
-          loadPainel(); loadTransGrid(); loadTodos(); loadCheckin(); updateBadge();
-          document.getElementById('cfg-ntrans').textContent = db.transportadoras.length;
-          document.getElementById('cfg-nreg').textContent   = db.registros.length;
-        }
+        loadTransGrid();
+        updateBadge();
+        document.getElementById('cfg-ntrans').textContent = db.transportadoras.length;
+        document.getElementById('cfg-nreg').textContent   = db.registros.length;
       }
-      if (session && session.role === 'trans') {
-        if (appVisible) { loadMeus(); renderGrade(); }
-      }
+      if (session && session.role === 'trans') renderGrade();
       console.log('✅ Dados do Firebase carregados localmente');
     }
   } catch(e) {
@@ -2456,8 +2757,28 @@ document.addEventListener('DOMContentLoaded', () => {
     fbWriteAdminSenha(db.admin.senha);
   };
 
-  // Credenciais já resolvidas e Firebase já iniciado pelo bootStart().
-  // Nenhuma ação adicional necessária aqui.
+  // Auto-conecta: prioridade 1 = localStorage (configurado pelo admin via tela)
+  //               prioridade 2 = config embutida no código (padrão para todos)
+  function resolveFirebaseCfg() {
+    try {
+      const saved = localStorage.getItem(FB_CFG_KEY);
+      if (saved) {
+        const c = JSON.parse(saved);
+        if (c.apiKey && c.projectId && !c.apiKey.startsWith('COLE_AQUI')) return c;
+      }
+    } catch(e) {}
+    // Fallback para config embutida
+    const b = window.FB_CONFIG_BUILTIN;
+    if (b && b.apiKey && !b.apiKey.startsWith('COLE_AQUI') && b.projectId) return b;
+    return null;
+  }
+
+  const fbCfgToUse = resolveFirebaseCfg();
+  if (fbCfgToUse) {
+    setTimeout(() => fbLoadSDK(fbCfgToUse), 400);
+  } else {
+    console.warn('Firebase: nenhuma credencial configurada. Rode em modo local.');
+  }
 
 });
 
