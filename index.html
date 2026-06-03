@@ -953,7 +953,7 @@ function enterApp() {
   document.getElementById('app-shell').style.display = 'flex';
   applySession();
   const n = new Date();
-  document.getElementById('f-data').valueAsDate = n;
+  document.getElementById('f-data').value = today();
   document.getElementById('painel-date').value = today();
   document.getElementById('todos-date').value = today();
   document.getElementById('checkin-date').value = today();
@@ -1056,7 +1056,7 @@ function clearForm() {
   renderGrade();
   ['f-motorista','f-cpf','f-tel','f-placa','f-produto','f-qtd','f-nf','f-origem','f-hora','f-obs'].forEach(id => document.getElementById(id).value='');
   document.getElementById('f-tipo').selectedIndex = 0;
-  document.getElementById('f-data').valueAsDate = new Date();
+  document.getElementById('f-data').value = today();
 }
 
 // ═══════════════════════════════════════════════
@@ -2107,8 +2107,10 @@ async function bootStart() {
   fbLoadSDK(cfg);
   await Promise.race([fbDone, timeout]);
 
-  // Se Firebase conectou, fbInitData já rodou via 'fb-ready'.
-  // Agora exibe a interface.
+  // Aguarda fbInitData terminar de fato (pode ainda estar em curso)
+  if (_fbInitDone) await _fbInitDone;
+
+  // Dados já no localStorage — exibe a interface
   bootHideSpinner();
   populateLoginTrans();
   if (session) enterApp();
@@ -2215,12 +2217,16 @@ function fbLoadSDK(cfg) {
   document.head.appendChild(s);
 }
 
+// Promise resolvida quando fbInitData terminar — usada pelo bootStart
+let _fbInitDone = null;
+
 window.addEventListener('fb-ready', async () => {
   fbDB = window._fbAPI.db;
   fbReady = true;
   fbSetBadge(true);
   showToast('ok', '🔥 Firebase conectado! Sincronizando...');
-  await fbInitData();
+  _fbInitDone = fbInitData();
+  await _fbInitDone;
   fbStartListeners();
 });
 
