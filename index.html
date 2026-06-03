@@ -2042,17 +2042,83 @@ window.addEventListener('storage', function(e) {
 });
 
 // ═══════════════════════════════════════════════
-//  BOOT
-// ═══════════════════════════════════════════════
-populateLoginTrans();
-loadSession();
-if(session){enterApp();}
-
-// ═══════════════════════════════════════════════
-//  FIREBASE — integração corrigida v3.1
+//  FIREBASE — variáveis de estado (declaradas antes do boot)
 // ═══════════════════════════════════════════════
 const FB_CFG_KEY = 'grade_fb_cfg';
 let fbDB = null, fbListeners = [], fbReady = false;
+
+// ═══════════════════════════════════════════════
+//  BOOT — aguarda Firebase antes de exibir login
+// ═══════════════════════════════════════════════
+
+// Injeta spinner de carregamento sobre a tela de login
+(function injectBootSpinner() {
+  const overlay = document.createElement('div');
+  overlay.id = 'boot-overlay';
+  overlay.style.cssText = [
+    'position:fixed','inset:0','background:var(--bg)',
+    'z-index:2000','display:flex','flex-direction:column',
+    'align-items:center','justify-content:center','gap:16px'
+  ].join(';');
+  overlay.innerHTML =
+    '<div style="width:36px;height:36px;border:3px solid rgba(46,204,143,.2);' +
+    'border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite"></div>' +
+    '<div style="font-size:13px;color:var(--text2)">Conectando ao servidor...</div>';
+  document.body.appendChild(overlay);
+})();
+
+function bootHideSpinner() {
+  const el = document.getElementById('boot-overlay');
+  if (el) el.remove();
+}
+
+// Tenta iniciar o Firebase e só depois exibe login/app
+async function bootStart() {
+  loadSession();
+
+  const cfg = (function resolveBootCfg() {
+    try {
+      const saved = localStorage.getItem('grade_fb_cfg');
+      if (saved) {
+        const c = JSON.parse(saved);
+        if (c.apiKey && c.projectId && !c.apiKey.startsWith('COLE_AQUI')) return c;
+      }
+    } catch(e) {}
+    const b = window.FB_CONFIG_BUILTIN;
+    if (b && b.apiKey && !b.apiKey.startsWith('COLE_AQUI') && b.projectId) return b;
+    return null;
+  })();
+
+  if (!cfg) {
+    // Sem Firebase configurado — modo local imediato
+    bootHideSpinner();
+    populateLoginTrans();
+    if (session) enterApp();
+    return;
+  }
+
+  // Carrega SDK Firebase e aguarda resultado (máx. 8s)
+  const timeout = new Promise(resolve => setTimeout(resolve, 8000));
+  const fbDone  = new Promise(resolve => {
+    window.addEventListener('fb-ready', resolve, { once: true });
+    window.addEventListener('fb-error', resolve, { once: true });
+  });
+
+  fbLoadSDK(cfg);
+  await Promise.race([fbDone, timeout]);
+
+  // Se Firebase conectou, fbInitData já rodou via 'fb-ready'.
+  // Agora exibe a interface.
+  bootHideSpinner();
+  populateLoginTrans();
+  if (session) enterApp();
+}
+
+bootStart();
+
+// ═══════════════════════════════════════════════
+//  FIREBASE — integração corrigida v3.2
+// ═══════════════════════════════════════════════
 
 // ── Exibe credenciais salvas no form ────────────
 function fbLoadCreds() {
@@ -2178,14 +2244,23 @@ async function fbInitData() {
     const db = getDB();
 
     if (tSnap.empty && rSnap.empty) {
-      // Firebase vazio → sobe dados locais
-      for (const t of db.transportadoras)
-        await api.setDoc(api.doc(fbDB, 'transportadoras', t.id), t);
-      for (const r of db.registros)
-        await api.setDoc(api.doc(fbDB, 'registros', r.id), r);
-      if (!cfgSnap.exists())
-        await api.setDoc(api.doc(fbDB, 'config', 'admin'), { senha: db.admin.senha });
-      console.log('✅ Dados locais enviados ao Firebase');
+      // Firebase vazio → só sobe dados locais se houver conteúdo real cadastrado
+      const temConteudo = db.transportadoras.length > 0 || db.registros.length > 0;
+      if (temConteudo) {
+        for (const t of db.transportadoras)
+          await api.setDoc(api.doc(fbDB, 'transportadoras', t.id), t);
+        for (const r of db.registros)
+          await api.setDoc(api.doc(fbDB, 'registros', r.id), r);
+        if (!cfgSnap.exists())
+          await api.setDoc(api.doc(fbDB, 'config', 'admin'), { senha: db.admin.senha });
+        console.log('✅ Dados locais enviados ao Firebase');
+      } else {
+        // Novo dispositivo sem dados locais E Firebase vazio: apenas garante config admin
+        if (!cfgSnap.exists()) {
+          await api.setDoc(api.doc(fbDB, 'config', 'admin'), { senha: db.admin.senha });
+        }
+        console.log('ℹ️ Firebase e localStorage ambos vazios — aguardando primeiro cadastro');
+      }
     } else {
       // Firebase tem dados → sincroniza para local
       if (!tSnap.empty) db.transportadoras = tSnap.docs.map(d => d.data());
@@ -2193,13 +2268,18 @@ async function fbInitData() {
       if (cfgSnap.exists()) db.admin        = cfgSnap.data();
       localStorage.setItem(DB_KEY, JSON.stringify(db));
       populateLoginTrans();
+      // Se o app já estava visível com dados vazios, atualiza tudo agora
+      const appVisible = document.getElementById('app-shell').style.display !== 'none';
       if (session && session.role === 'admin') {
-        loadTransGrid();
-        updateBadge();
-        document.getElementById('cfg-ntrans').textContent = db.transportadoras.length;
-        document.getElementById('cfg-nreg').textContent   = db.registros.length;
+        if (appVisible) {
+          loadPainel(); loadTransGrid(); loadTodos(); loadCheckin(); updateBadge();
+          document.getElementById('cfg-ntrans').textContent = db.transportadoras.length;
+          document.getElementById('cfg-nreg').textContent   = db.registros.length;
+        }
       }
-      if (session && session.role === 'trans') renderGrade();
+      if (session && session.role === 'trans') {
+        if (appVisible) { loadMeus(); renderGrade(); }
+      }
       console.log('✅ Dados do Firebase carregados localmente');
     }
   } catch(e) {
@@ -2370,28 +2450,8 @@ document.addEventListener('DOMContentLoaded', () => {
     fbWriteAdminSenha(db.admin.senha);
   };
 
-  // Auto-conecta: prioridade 1 = localStorage (configurado pelo admin via tela)
-  //               prioridade 2 = config embutida no código (padrão para todos)
-  function resolveFirebaseCfg() {
-    try {
-      const saved = localStorage.getItem(FB_CFG_KEY);
-      if (saved) {
-        const c = JSON.parse(saved);
-        if (c.apiKey && c.projectId && !c.apiKey.startsWith('COLE_AQUI')) return c;
-      }
-    } catch(e) {}
-    // Fallback para config embutida
-    const b = window.FB_CONFIG_BUILTIN;
-    if (b && b.apiKey && !b.apiKey.startsWith('COLE_AQUI') && b.projectId) return b;
-    return null;
-  }
-
-  const fbCfgToUse = resolveFirebaseCfg();
-  if (fbCfgToUse) {
-    setTimeout(() => fbLoadSDK(fbCfgToUse), 400);
-  } else {
-    console.warn('Firebase: nenhuma credencial configurada. Rode em modo local.');
-  }
+  // Credenciais já resolvidas e Firebase já iniciado pelo bootStart().
+  // Nenhuma ação adicional necessária aqui.
 
 });
 
