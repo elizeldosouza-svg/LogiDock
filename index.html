@@ -425,7 +425,7 @@ tbody tr:hover td{background:var(--surface2)}
           <button class="grade-date-btn" onclick="moveGradeDay(1)"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
         </div>
         <div class="grade-header">
-          <div class="grade-title">Selecione uma janela de carregamento disponível (1h cada)</div>
+          <div class="grade-title">Selecione uma janela de carregamento disponível (30min cada)</div>
           <div class="grade-legend">
             <div class="grade-legend-item"><div class="grade-legend-dot" style="background:var(--green-l);border:1px solid rgba(46,204,143,.4)"></div>Disponível</div>
             <div class="grade-legend-item"><div class="grade-legend-dot" style="background:var(--red-l);border:1px solid rgba(224,92,92,.2)"></div>Ocupado</div>
@@ -440,7 +440,7 @@ tbody tr:hover td{background:var(--surface2)}
           <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           <div>
             <div class="grade-confirm-info" id="grade-confirm-info">—</div>
-            <div class="grade-confirm-sub">Janela de 1 hora reservada — confirme os demais dados e envie</div>
+            <div class="grade-confirm-sub">Janela de 30 minutos reservada — confirme os demais dados e envie</div>
           </div>
           <button class="btn btn-outline btn-sm" onclick="clearSlotSelection()" style="color:var(--red);border-color:rgba(224,92,92,.3)">
             <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Cancelar
@@ -486,15 +486,15 @@ tbody tr:hover td{background:var(--surface2)}
       </div>
       <!-- Métricas da grade -->
       <div class="metrics" style="grid-template-columns:repeat(4,1fr)">
-        <div class="metric"><div class="metric-icon green"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="metric-val" id="ag-total">24</div><div class="metric-label">Janelas no dia</div></div>
+        <div class="metric"><div class="metric-icon green"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="metric-val" id="ag-total">48</div><div class="metric-label">Janelas no dia</div></div>
         <div class="metric"><div class="metric-icon amber"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="metric-val" id="ag-ocup" style="color:var(--amber)">0</div><div class="metric-label">Ocupadas</div></div>
-        <div class="metric"><div class="metric-icon green"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="metric-val" id="ag-disp" style="color:var(--green)">24</div><div class="metric-label">Disponíveis</div></div>
+        <div class="metric"><div class="metric-icon green"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="metric-val" id="ag-disp" style="color:var(--green)">48</div><div class="metric-label">Disponíveis</div></div>
         <div class="metric"><div class="metric-icon blue"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div class="metric-val" id="ag-ocup-pct" style="color:var(--blue)">0%</div><div class="metric-label">Ocupação</div></div>
       </div>
       <!-- Grade visual -->
       <div class="grade-wrap">
         <div class="grade-header">
-          <div class="grade-title">Grade de 24 horas — clique num slot ocupado para ver detalhes</div>
+          <div class="grade-title">Grade de 24 horas (48 slots de 30min) — clique num slot ocupado para ver detalhes</div>
           <div class="grade-legend">
             <div class="grade-legend-item"><div class="grade-legend-dot" style="background:var(--green-l);border:1px solid rgba(46,204,143,.4)"></div>Livre</div>
             <div class="grade-legend-item"><div class="grade-legend-dot" style="background:var(--red-l);border:1px solid rgba(224,92,92,.2)"></div>Agendado</div>
@@ -953,7 +953,7 @@ function enterApp() {
   document.getElementById('app-shell').style.display = 'flex';
   applySession();
   const n = new Date();
-  document.getElementById('f-data').value = today();
+  document.getElementById('f-data').valueAsDate = n;
   document.getElementById('painel-date').value = today();
   document.getElementById('todos-date').value = today();
   document.getElementById('checkin-date').value = today();
@@ -1056,7 +1056,7 @@ function clearForm() {
   renderGrade();
   ['f-motorista','f-cpf','f-tel','f-placa','f-produto','f-qtd','f-nf','f-origem','f-hora','f-obs'].forEach(id => document.getElementById(id).value='');
   document.getElementById('f-tipo').selectedIndex = 0;
-  document.getElementById('f-data').value = today();
+  document.getElementById('f-data').valueAsDate = new Date();
 }
 
 // ═══════════════════════════════════════════════
@@ -1752,8 +1752,8 @@ function fmtDateBR(dateStr) {
   return names[dt.getDay()] + ', ' + d + '/' + m + '/' + y;
 }
 
-function slotKey(dateStr, hour) {
-  return dateStr + '_' + String(hour).padStart(2,'0');
+function slotKey(dateStr, hour, min) {
+  return dateStr + '_' + String(hour).padStart(2,'0') + '_' + String(min || 0).padStart(2,'0');
 }
 
 // Returns map: slotKey -> registro (only slots with a booking)
@@ -1762,15 +1762,19 @@ function buildSlotMap(dateStr) {
   const regs = db.registros.filter(r => r.dataPrevista === dateStr && r.status !== 'Ausente');
   const map  = {};
   regs.forEach(r => {
-    const h = parseInt(r.horaPrevista.split(':')[0]);
-    const k = slotKey(dateStr, h);
-    if (!map[k]) map[k] = r;   // first booking wins (shouldn't be duplicates)
+    const parts = r.horaPrevista.split(':');
+    const h = parseInt(parts[0]);
+    // Compatibilidade: HH:00 existentes caem em :00, novos podem ser :30
+    const rawMin = parseInt(parts[1] || 0);
+    const m = rawMin >= 30 ? 30 : 0;
+    const k = slotKey(dateStr, h, m);
+    if (!map[k]) map[k] = r;
   });
   return map;
 }
 
-function hourLabel(h) {
-  return String(h).padStart(2,'0') + ':00';
+function hourLabel(h, m) {
+  return String(h).padStart(2,'0') + ':' + String(m || 0).padStart(2,'0');
 }
 
 // ── GRADE DO TRANSPORTADOR ──────────────────────────────────────────────────
@@ -1795,16 +1799,19 @@ function renderGrade() {
   const now     = new Date();
   const isToday = gradeDate === today();
   const currentH= now.getHours();
+  const currentM= now.getMinutes();
 
   grid.innerHTML = '';
 
-  for (let h = 0; h < 24; h++) {
-    const k       = slotKey(gradeDate, h);
+  for (let i = 0; i < 48; i++) {
+    const h = Math.floor(i / 2);
+    const m = (i % 2) * 30;
+    const k       = slotKey(gradeDate, h, m);
     const booking = slotMap[k];
-    const isPast  = isToday && h < currentH;
+    const isPast  = isToday && (h < currentH || (h === currentH && m < currentM));
     const isMine  = booking && session && booking.transId === session.transId;
     const isTaken = booking && !isMine;
-    const isSelected = selectedSlot && selectedSlot.date === gradeDate && selectedSlot.hour === h;
+    const isSelected = selectedSlot && selectedSlot.date === gradeDate && selectedSlot.hour === h && selectedSlot.min === m;
 
     let cls = 'slot ';
     let label = '', transLabel = '';
@@ -1833,14 +1840,13 @@ function renderGrade() {
     div.title = isTaken ? ('Ocupado — ' + (booking.transNome||'')) : isMine ? 'Seu agendamento' : isPast ? 'Janela encerrada' : 'Clique para selecionar';
     div.innerHTML =
       '<div class="slot-badge"></div>' +
-      '<div class="slot-hour">' + hourLabel(h) + '</div>' +
+      '<div class="slot-hour">' + hourLabel(h, m) + '</div>' +
       '<div class="slot-label">' + label + '</div>' +
       (transLabel ? '<div class="slot-trans">' + transLabel + '</div>' : '');
 
     if (!isPast && !isTaken && !isSelected) {
-      div.addEventListener('click', () => selectSlot(gradeDate, h));
+      div.addEventListener('click', () => selectSlot(gradeDate, h, m));
     } else if (isMine && !isSelected) {
-      // clicking own slot = deselect or just info
       div.addEventListener('click', () => showToast('info', 'Este slot já está agendado por você.'));
     }
 
@@ -1848,17 +1854,20 @@ function renderGrade() {
   }
 }
 
-function selectSlot(dateStr, hour) {
-  selectedSlot = { date: dateStr, hour: hour };
+function selectSlot(dateStr, hour, min) {
+  selectedSlot = { date: dateStr, hour: hour, min: min };
 
   // Update hidden form fields
   document.getElementById('f-data').value = dateStr;
-  document.getElementById('f-hora').value = hourLabel(hour);
+  document.getElementById('f-hora').value = hourLabel(hour, min);
 
   // Show confirm bar
   const bar  = document.getElementById('grade-confirm-bar');
   const info = document.getElementById('grade-confirm-info');
-  info.textContent = 'Janela selecionada: ' + fmtDateBR(dateStr) + ' — ' + hourLabel(hour) + ' às ' + hourLabel(hour+1 < 24 ? hour+1 : 0);
+  const nextMin = min + 30;
+  const nextH   = nextMin >= 60 ? (hour + 1 < 24 ? hour + 1 : 0) : hour;
+  const nextM   = nextMin >= 60 ? 0 : nextMin;
+  info.textContent = 'Janela selecionada: ' + fmtDateBR(dateStr) + ' — ' + hourLabel(hour, min) + ' às ' + hourLabel(nextH, nextM);
   bar.classList.add('show');
 
   renderGrade();
@@ -1889,10 +1898,11 @@ function renderAdminGrade() {
   const now     = new Date();
   const isToday = adminGradeDate === today();
   const currentH= now.getHours();
+  const currentM= now.getMinutes();
 
   const occupied = Object.keys(slotMap).length;
-  const free     = 24 - occupied;
-  const pct      = Math.round(occupied / 24 * 100);
+  const free     = 48 - occupied;
+  const pct      = Math.round(occupied / 48 * 100);
 
   document.getElementById('ag-ocup').textContent    = occupied;
   document.getElementById('ag-disp').textContent    = free;
@@ -1902,25 +1912,27 @@ function renderAdminGrade() {
   const grid = document.getElementById('admin-grade-grid');
   grid.innerHTML = '';
 
-  for (let h = 0; h < 24; h++) {
-    const k       = slotKey(adminGradeDate, h);
+  for (let i = 0; i < 48; i++) {
+    const h = Math.floor(i / 2);
+    const m = (i % 2) * 30;
+    const k       = slotKey(adminGradeDate, h, m);
     const booking = slotMap[k];
-    const isPast  = isToday && h < currentH;
+    const isPast  = isToday && (h < currentH || (h === currentH && m < currentM));
 
     let cls = 'slot ';
     let label = '', sub = '';
 
     if (booking) {
       cls += 'taken';
-      label = hourLabel(h);
+      label = hourLabel(h, m);
       sub   = booking.transNome ? booking.transNome.split(' ')[0] : '—';
     } else if (isPast) {
       cls += 'past';
-      label = hourLabel(h);
+      label = hourLabel(h, m);
       sub   = 'Livre';
     } else {
       cls += 'free';
-      label = hourLabel(h);
+      label = hourLabel(h, m);
       sub   = 'Livre';
     }
 
@@ -1967,7 +1979,7 @@ function showAdminSlotDetail(r) {
       '<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Tipo de veículo</div><div style="font-weight:500">' + (r.tipoVeiculo||'—') + '</div></div>' +
       '<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Produto</div><div style="font-weight:500">' + r.produto + '</div></div>' +
       '<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Quantidade</div><div style="font-weight:500">' + r.quantidade + 't</div></div>' +
-      '<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Janela agendada</div><div style="font-weight:500;font-family:var(--mono)">' + r.horaPrevista + ' – ' + (String(parseInt(r.horaPrevista)+1).padStart(2,'0')) + ':00</div></div>' +
+      '<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Janela agendada</div><div style="font-weight:500;font-family:var(--mono)">' + r.horaPrevista + ' – ' + (function(){ const parts=r.horaPrevista.split(':'); const h=parseInt(parts[0]); const rawM=parseInt(parts[1]||0); const nm=rawM+30; return nm>=60?(String(h+1<24?h+1:0).padStart(2,'0')+':00'):(String(h).padStart(2,'0')+':30'); })() + '</div></div>' +
       '<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Status / Aderência</div>' + aderBadge + '</div>' +
       (r.notaFiscal ? '<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Nota fiscal</div><div style="font-weight:500;font-family:var(--mono)">' + r.notaFiscal + '</div></div>' : '') +
       (r.origem ? '<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Origem</div><div style="font-weight:500">' + r.origem + '</div></div>' : '') +
@@ -1985,8 +1997,13 @@ function renderAdminGradeList(slotMap) {
   wrap.innerHTML = '<div class="table-wrap"><table>' +
     '<thead><tr><th>Janela</th><th>Motorista</th><th>Placa</th><th>Tipo</th><th>Produto</th><th>Qtd(t)</th><th>Transportadora</th><th>Status</th></tr></thead>' +
     '<tbody>' + regs.map(r => {
-      const h = parseInt(r.horaPrevista);
-      const window = hourLabel(h) + ' – ' + hourLabel(h+1 < 24 ? h+1 : 0);
+      const parts = r.horaPrevista.split(':');
+      const h = parseInt(parts[0]);
+      const rawM = parseInt(parts[1] || 0);
+      const nm = rawM + 30;
+      const nh = nm >= 60 ? (h + 1 < 24 ? h + 1 : 0) : h;
+      const nmin = nm >= 60 ? 0 : nm;
+      const window = hourLabel(h, rawM) + ' – ' + hourLabel(nh, nmin);
       return '<tr>' +
         '<td style="font-family:var(--mono);font-size:12px;white-space:nowrap">' + window + '</td>' +
         '<td>' + r.motorista + '</td>' +
@@ -2042,85 +2059,17 @@ window.addEventListener('storage', function(e) {
 });
 
 // ═══════════════════════════════════════════════
-//  FIREBASE — variáveis de estado (declaradas antes do boot)
+//  BOOT
+// ═══════════════════════════════════════════════
+populateLoginTrans();
+loadSession();
+if(session){enterApp();}
+
+// ═══════════════════════════════════════════════
+//  FIREBASE — integração corrigida v3.1
 // ═══════════════════════════════════════════════
 const FB_CFG_KEY = 'grade_fb_cfg';
 let fbDB = null, fbListeners = [], fbReady = false;
-
-// ═══════════════════════════════════════════════
-//  BOOT — aguarda Firebase antes de exibir login
-// ═══════════════════════════════════════════════
-
-// Injeta spinner de carregamento sobre a tela de login
-(function injectBootSpinner() {
-  const overlay = document.createElement('div');
-  overlay.id = 'boot-overlay';
-  overlay.style.cssText = [
-    'position:fixed','inset:0','background:var(--bg)',
-    'z-index:2000','display:flex','flex-direction:column',
-    'align-items:center','justify-content:center','gap:16px'
-  ].join(';');
-  overlay.innerHTML =
-    '<div style="width:36px;height:36px;border:3px solid rgba(46,204,143,.2);' +
-    'border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite"></div>' +
-    '<div style="font-size:13px;color:var(--text2)">Conectando ao servidor...</div>';
-  document.body.appendChild(overlay);
-})();
-
-function bootHideSpinner() {
-  const el = document.getElementById('boot-overlay');
-  if (el) el.remove();
-}
-
-// Tenta iniciar o Firebase e só depois exibe login/app
-async function bootStart() {
-  loadSession();
-
-  const cfg = (function resolveBootCfg() {
-    try {
-      const saved = localStorage.getItem('grade_fb_cfg');
-      if (saved) {
-        const c = JSON.parse(saved);
-        if (c.apiKey && c.projectId && !c.apiKey.startsWith('COLE_AQUI')) return c;
-      }
-    } catch(e) {}
-    const b = window.FB_CONFIG_BUILTIN;
-    if (b && b.apiKey && !b.apiKey.startsWith('COLE_AQUI') && b.projectId) return b;
-    return null;
-  })();
-
-  if (!cfg) {
-    // Sem Firebase configurado — modo local imediato
-    bootHideSpinner();
-    populateLoginTrans();
-    if (session) enterApp();
-    return;
-  }
-
-  // Carrega SDK Firebase e aguarda resultado (máx. 8s)
-  const timeout = new Promise(resolve => setTimeout(resolve, 8000));
-  const fbDone  = new Promise(resolve => {
-    window.addEventListener('fb-ready', resolve, { once: true });
-    window.addEventListener('fb-error', resolve, { once: true });
-  });
-
-  fbLoadSDK(cfg);
-  await Promise.race([fbDone, timeout]);
-
-  // Aguarda fbInitData terminar de fato (pode ainda estar em curso)
-  if (_fbInitDone) await _fbInitDone;
-
-  // Dados já no localStorage — exibe a interface
-  bootHideSpinner();
-  populateLoginTrans();
-  if (session) enterApp();
-}
-
-bootStart();
-
-// ═══════════════════════════════════════════════
-//  FIREBASE — integração corrigida v3.2
-// ═══════════════════════════════════════════════
 
 // ── Exibe credenciais salvas no form ────────────
 function fbLoadCreds() {
@@ -2217,16 +2166,12 @@ function fbLoadSDK(cfg) {
   document.head.appendChild(s);
 }
 
-// Promise resolvida quando fbInitData terminar — usada pelo bootStart
-let _fbInitDone = null;
-
 window.addEventListener('fb-ready', async () => {
   fbDB = window._fbAPI.db;
   fbReady = true;
   fbSetBadge(true);
   showToast('ok', '🔥 Firebase conectado! Sincronizando...');
-  _fbInitDone = fbInitData();
-  await _fbInitDone;
+  await fbInitData();
   fbStartListeners();
 });
 
@@ -2250,23 +2195,14 @@ async function fbInitData() {
     const db = getDB();
 
     if (tSnap.empty && rSnap.empty) {
-      // Firebase vazio → só sobe dados locais se houver conteúdo real cadastrado
-      const temConteudo = db.transportadoras.length > 0 || db.registros.length > 0;
-      if (temConteudo) {
-        for (const t of db.transportadoras)
-          await api.setDoc(api.doc(fbDB, 'transportadoras', t.id), t);
-        for (const r of db.registros)
-          await api.setDoc(api.doc(fbDB, 'registros', r.id), r);
-        if (!cfgSnap.exists())
-          await api.setDoc(api.doc(fbDB, 'config', 'admin'), { senha: db.admin.senha });
-        console.log('✅ Dados locais enviados ao Firebase');
-      } else {
-        // Novo dispositivo sem dados locais E Firebase vazio: apenas garante config admin
-        if (!cfgSnap.exists()) {
-          await api.setDoc(api.doc(fbDB, 'config', 'admin'), { senha: db.admin.senha });
-        }
-        console.log('ℹ️ Firebase e localStorage ambos vazios — aguardando primeiro cadastro');
-      }
+      // Firebase vazio → sobe dados locais
+      for (const t of db.transportadoras)
+        await api.setDoc(api.doc(fbDB, 'transportadoras', t.id), t);
+      for (const r of db.registros)
+        await api.setDoc(api.doc(fbDB, 'registros', r.id), r);
+      if (!cfgSnap.exists())
+        await api.setDoc(api.doc(fbDB, 'config', 'admin'), { senha: db.admin.senha });
+      console.log('✅ Dados locais enviados ao Firebase');
     } else {
       // Firebase tem dados → sincroniza para local
       if (!tSnap.empty) db.transportadoras = tSnap.docs.map(d => d.data());
@@ -2274,18 +2210,13 @@ async function fbInitData() {
       if (cfgSnap.exists()) db.admin        = cfgSnap.data();
       localStorage.setItem(DB_KEY, JSON.stringify(db));
       populateLoginTrans();
-      // Se o app já estava visível com dados vazios, atualiza tudo agora
-      const appVisible = document.getElementById('app-shell').style.display !== 'none';
       if (session && session.role === 'admin') {
-        if (appVisible) {
-          loadPainel(); loadTransGrid(); loadTodos(); loadCheckin(); updateBadge();
-          document.getElementById('cfg-ntrans').textContent = db.transportadoras.length;
-          document.getElementById('cfg-nreg').textContent   = db.registros.length;
-        }
+        loadTransGrid();
+        updateBadge();
+        document.getElementById('cfg-ntrans').textContent = db.transportadoras.length;
+        document.getElementById('cfg-nreg').textContent   = db.registros.length;
       }
-      if (session && session.role === 'trans') {
-        if (appVisible) { loadMeus(); renderGrade(); }
-      }
+      if (session && session.role === 'trans') renderGrade();
       console.log('✅ Dados do Firebase carregados localmente');
     }
   } catch(e) {
@@ -2456,8 +2387,28 @@ document.addEventListener('DOMContentLoaded', () => {
     fbWriteAdminSenha(db.admin.senha);
   };
 
-  // Credenciais já resolvidas e Firebase já iniciado pelo bootStart().
-  // Nenhuma ação adicional necessária aqui.
+  // Auto-conecta: prioridade 1 = localStorage (configurado pelo admin via tela)
+  //               prioridade 2 = config embutida no código (padrão para todos)
+  function resolveFirebaseCfg() {
+    try {
+      const saved = localStorage.getItem(FB_CFG_KEY);
+      if (saved) {
+        const c = JSON.parse(saved);
+        if (c.apiKey && c.projectId && !c.apiKey.startsWith('COLE_AQUI')) return c;
+      }
+    } catch(e) {}
+    // Fallback para config embutida
+    const b = window.FB_CONFIG_BUILTIN;
+    if (b && b.apiKey && !b.apiKey.startsWith('COLE_AQUI') && b.projectId) return b;
+    return null;
+  }
+
+  const fbCfgToUse = resolveFirebaseCfg();
+  if (fbCfgToUse) {
+    setTimeout(() => fbLoadSDK(fbCfgToUse), 400);
+  } else {
+    console.warn('Firebase: nenhuma credencial configurada. Rode em modo local.');
+  }
 
 });
 
